@@ -1,0 +1,518 @@
+Program.Sub.ScreenSU.Start
+Gui.frmQuoteCreate..Create
+Gui.frmQuoteCreate..Caption("CSV Importer")
+Gui.frmQuoteCreate..Size(7365,4050)
+Gui.frmQuoteCreate..MinX(0)
+Gui.frmQuoteCreate..MinY(0)
+Gui.frmQuoteCreate..Position(0,0)
+Gui.frmQuoteCreate..BackColor(-2147483633)
+Gui.frmQuoteCreate..MousePointer(0)
+Gui.frmQuoteCreate..Event(UnLoad,frmStatus_UnLoad)
+Gui.frmQuoteCreate.trvDrag.Create(TreeView)
+Gui.frmQuoteCreate.trvDrag.Size(6735,2910)
+Gui.frmQuoteCreate.trvDrag.Position(195,375)
+Gui.frmQuoteCreate.lbl1.Create(Label,"Drag and Drop CSV File Here",True,6495,255,0,180,150,True,0,"Arial",8,-2147483633,0)
+Gui.frmQuoteCreate.lbl1.FontStyle(True,False,False,False,False)
+Gui.frmStatus..Create
+Gui.frmStatus..Caption("Status")
+Gui.frmStatus..Size(7590,1680)
+Gui.frmStatus..MinX(0)
+Gui.frmStatus..MinY(0)
+Gui.frmStatus..Position(0,0)
+Gui.frmStatus..BackColor(-2147483633)
+Gui.frmStatus..MousePointer(0)
+Gui.frmStatus..Event(UnLoad,frmStatus_UnLoad)
+Gui.frmStatus.prgStat.Create(ProgressBar)
+Gui.frmStatus.prgStat.Size(6885,255)
+Gui.frmStatus.prgStat.Position(300,315)
+Gui.frmStatus.prgStat.Scrolling(1)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+v.global.sfileupload.Declare(string)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+Gui.frmQuoteCreate.trvDrag.Event("DRAGDROPFILE",Dragdrop)
+f.ODBC.Connection!con.openconnection(v.Ambient.PDSN,v.Ambient.PUser,v.Ambient.PPass)
+f.Data.DataTable.CreateFromSQL("dtWC","con","SELECT * FROM V_WORKCENTERS",true)
+f.Intrinsic.UI.SetBrowserHotTypeAhead(true)
+gui.frmQuoteCreate..Show
+Program.Sub.Main.End
+
+Program.Sub.DragDrop.Start
+gui.frmQuoteCreate..Visible(False)
+
+v.Local.sfiles.Declare(string)
+v.Local.scontent.Declare(string)
+v.Local.i.Declare(long)
+v.Local.j.Declare(long)
+
+v.Local.sNumber.Declare(string)
+v.Local.sstring.Declare(string)
+v.Local.iSeq.Declare(long)
+v.Local.iPos.Declare(long)
+v.Local.sDesc.Declare(string)
+v.Local.sWC.Declare(string)
+v.Local.fSetHrs.Declare(float)
+v.Local.fRunHrs.Declare(float)
+v.Local.sTravNote.Declare(string)
+v.Local.sProcessId.Declare(string)
+v.Local.fDays.Declare(float)
+v.Local.sret.Declare(string)
+v.Local.fSubPrice.Declare(float)
+v.Local.fSubUM.Declare(string)
+v.Local.sSubNotes.Declare(string)
+V.Local.sNewWC.Declare(STRING)
+v.Local.bOutCheck.Declare(boolean)
+v.Local.sOutside.Declare(string)
+v.Local.sSearch.Declare(string)
+v.Local.sval.Declare(string)
+V.Local.sSeqPad.Declare(string)
+v.Local.sSubUM.Declare(string)
+v.Local.bOutCheck.Set(false)
+V.Local.fRate.Declare(float)
+v.Local.sNotes.Declare(string)
+v.Local.ssql.Declare(string)
+v.Local.sRev.Declare(string)
+v.Local.sPart.Declare(string)
+v.Local.sfilename.Declare(string)
+
+v.Local.fCost.Declare(Float)
+v.Local.fLead.Declare(Float)
+v.Local.sUM.Declare(string)
+'NEED TO ADD IN ROUTER HEADER DESCRIPTION!!!!
+v.Local.sRtrDesc.Declare(string)
+v.Local.sMatOutLab.Declare(string)
+v.Local.sLMO.Declare(string)
+v.Local.sdbarev.Declare(string)
+v.Local.sFilePath.Declare(string)
+v.Local.sretVarheader.Declare(string)
+v.Local.sretVar.Declare(string)
+v.Local.sRouterHD.Declare(string)
+v.Local.lRowCount.Declare(long)
+v.Local.iCount.Declare(long)
+
+f.Intrinsic.Control.Try
+	V.Local.sfilename.Set("ROUTERHD.TXT")
+	''Reset the file
+	v.global.sfiledir.Declare(string)
+	v.Local.sBuild.Declare(string)
+	v.Local.iCounter.Declare(long)
+	F.Intrinsic.String.Concat(V.Caller.FilesDir,"\",V.Local.sfilename,V.global.sfiledir)
+	f.Intrinsic.File.String2File(v.global.sfiledir,"")
+	f.Intrinsic.File.File2String(v.Args.files,v.Local.sString)
+
+	f.Automation.MSExcel.CreateAppObject("MSExcel")
+	f.Automation.MSExcel.OpenWorkBook("MSExcel","Test",v.Args.files)
+	f.Automation.MSExcel.OpenWorkSheet("Test","Worksheet1",1)
+	f.Automation.MSExcel.RowCount("Worksheet1",v.Local.lRowCount)
+	f.Automation.MSExcel.ReadCell("Worksheet1",1,1,V.local.sretVarheader)
+	f.Intrinsic.UI.InvokeWaitDialog("Reading spreadsheet","Import Progress")
+	F.Intrinsic.Control.If(V.Local.sRetVarheader,<>,"")
+		F.Intrinsic.Control.For(V.Local.iCount,2,v.local.lRowCount,1)
+			f.Intrinsic.UI.ChangeWaitStatus("Has completed the following percent",300,1,v.Local.lRowCount)
+			f.Automation.MSExcel.ReadRow("Worksheet1",V.Local.iCount,1,13,V.local.sRetVar)
+			F.Intrinsic.String.Split(V.Local.sRetVar,"*!*",V.Local.sRetVar)
+			f.Global.Inventory.GetGSSPart(v.Local.sretVar(0).ucase,"",v.Local.spart)
+			'Determine if router exists
+			f.Intrinsic.String.Build("SELECT * FROM V_ROUTER_HEADER WHERE ROUTER='{0}'",v.Local.sPart,v.Local.ssql)
+			f.ODBC.Connection!con.executeandreturn(v.Local.ssql,v.Local.sret)
+			f.Intrinsic.Control.If(v.Local.sret.Trim,=,"")
+				V.Local.sRtrDesc.Set(v.Local.sretVar(1))
+				v.Local.sdbarev.Set(v.Local.sretVar(2))
+				v.Local.iSeq.Set(v.Local.sretVar(3))
+				v.Local.sLMO.Set(v.Local.sretVar(4))
+				v.Local.sMatOutLab.Set(v.Local.sretVar(5))
+				v.Local.sDesc.Set(v.Local.sretVar(6))
+				v.Local.fSetHrs.Set(v.Local.sretVar(7))
+				v.Local.fRunHrs.Set(v.Local.sretVar(8))
+				v.Local.sUM.Set(v.Local.sretvar(9))
+				'If Material, get the long part number
+				f.Intrinsic.Control.If(v.Local.sLMO,=,"M")
+					f.Global.Inventory.GetGSSPart(v.Local.sretVar(5).ucase,"",v.Local.sMatOutLab)
+				f.Intrinsic.Control.ElseIf(v.Local.sLMO,=,"L")
+				'Determine the Workcentre
+					f.Intrinsic.Control.If(v.Local.sMatOutLab.Trim,=,"NC TURNING")
+						V.Local.sMatOutLab.Set("NT")
+					f.Intrinsic.Control.ElseIF(V.Local.sMatOutLab.Trim,=,"MILLING")
+						V.Local.sMatOutLab.Set("M")
+					f.Intrinsic.Control.ElseIF(V.Local.sMatOutLab.Trim,=,"POLISHING")
+						V.Local.sMatOutLab.Set("P")
+					f.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"Q.A. CHECK")
+						V.Local.sMatOutLab.Set("Q")
+					f.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"LASER")
+						V.Local.sMatOutLab.Set("L")
+					f.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"LASER ETCH")
+						V.Local.sMatOutLab.Set("LE")
+					f.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"LASER PROG")
+						V.Local.sMatOutLab.Set("LP")
+					f.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"NC PROGRAM")
+						V.Local.sMatOutLab.Set("PR")
+					f.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"NC FOLDING")
+						V.Local.sMatOutLab.Set("FO")
+					F.Intrinsic.Control.ElseIF(V.Local.sMatOutLab.Trim,=,"TURNING")
+						V.Local.sMatOutLab.Set("T")
+					F.Intrinsic.Control.ElseIf(V.Local.sMatOutLab.Trim,=,"FABRICATION")
+						V.Local.sMatOutLab.Set("F")
+					F.Intrinsic.Control.ElseIf(V.Local.sMatOutLab.Trim,=,"GENERAL")
+						V.Local.sMatOutLab.Set("G")
+					f.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"NC VICTOR")
+						v.Local.sMatOutLab.Set("V")
+					F.Intrinsic.Control.ElseIf(V.Local.sMatOutLab.Trim,=,"NC KAOMING")
+						V.Local.sMatOutLab.Set("K")
+					F.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"NC MILLING")
+						v.Local.sMatOutLab.Set("NM")
+					F.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"FITTING")
+						v.Local.sMatOutLab.Set("A")
+					F.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"DESIGN")
+						v.Local.sMatOutLab.Set("D")
+					F.Intrinsic.Control.ElseIf(v.Local.sMatOutLab.Trim,=,"DRAWING")
+						v.Local.sMatOutLab.Set("DR")
+					F.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.EndIf
+				'Lead time, if material, pull from part master, if outside pull from op code
+				f.Intrinsic.Control.If(v.Local.sLMO.Trim,=,"M")
+					f.Intrinsic.String.Build("SELECT TIME_MATERIAL_LEAD FROM V_INVENTORY_MSTR WHERE PART='{0}'",v.Local.sMatOutLab.Trim,v.Local.ssql)
+					f.ODBC.Connection!con.executeandreturn(v.Local.ssql,v.Local.fLead)
+				f.Intrinsic.Control.Elseif(v.Local.sLMO.Trim,=,"O")
+					f.Intrinsic.String.Build("SELECT STD_LEAD_TIME FROM V_OP_CODES WHERE MACHINE='{0}'",v.Local.sMatOutLab.Trim,v.Local.ssql)
+					f.ODBC.Connection!con.executeandreturn(v.Local.ssql,v.Local.fLead)
+				f.Intrinsic.Control.Else
+					F.Intrinsic.Control.If(V.Local.sretVar(10).trim,=,"")
+						v.Local.flead.Set(0)
+					f.Intrinsic.Control.Else
+						v.Local.fLead.Set(v.Local.sretVar(10))
+					f.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.EndIf
+				'If material, pull from part master, if labour pull from work centre
+				f.Intrinsic.Control.If(v.Local.sLMO.Trim,=,"M")
+					f.Intrinsic.String.Build("SELECT AMT_ALT_COST FROM V_INVENTORY_MSTR WHERE PART='{0}'",v.Local.sMatOutLab.Trim,v.Local.ssql)
+					f.ODBC.Connection!con.executeandreturn(v.Local.ssql,v.Local.fCost)
+					F.Intrinsic.Control.If(V.Local.fCost,=,0)
+						f.Intrinsic.String.Build("SELECT AMT_COST FROM V_INVENTORY_MSTR WHERE PART='{0}'",v.Local.sMatOutLab.Trim,v.Local.ssql)
+						f.ODBC.Connection!con.executeandreturn(v.Local.ssql,v.Local.fCost)
+					f.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.Elseif(v.Local.sLMO.Trim,=,"L")
+					f.Intrinsic.String.Build("SELECT STANDARD_COST FROM V_WORKCENTERS WHERE MACHINE='{0}'",v.Local.sMatOutLab.Trim,v.Local.ssql)
+					f.ODBC.Connection!con.executeandreturn(v.Local.ssql,v.Local.fCost)
+				f.Intrinsic.Control.Else
+					F.Intrinsic.Control.If(V.Local.sretVar(11).trim,=,"")
+						v.Local.fCost.Set(0)
+					f.Intrinsic.Control.Else
+						v.Local.fCost.Set(v.Local.sretVar(11))
+					f.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.EndIf
+				v.Local.sNotes.Set(v.Local.sretVar(12))
+				
+				f.Intrinsic.Control.If(v.Local.sLMO.Trim,=,"O")
+					'Outside Work
+					F.Intrinsic.Control.CallSub(uploadRTR,"DBARev",v.Local.sdbarev,"Number",v.Local.sPart,"Desc",v.Local.sRtrDesc,"PL","FM","LeadTime",v.Local.fLead,"Qty10","","Qty9","","Qty8","","Qty7","","Qty6","","Qty5","","Qty4","","Qty3","","Qty2","","Qty1","1","Seq_Desc",v.Local.sDesc,"UM",V.Local.sUM,"Rate",v.Local.fCost,"RunTime",v.Local.fRunHrs,"Part",v.Local.sMatOutLab,"LMO","O","Sequence",V.Local.iSeq,"WC","","SetupTime",v.Local.fSetHrs,"Customer","","CustPart","","OpCode","")
+					f.Intrinsic.Control.If(v.Local.sNotes.Trim,<>,"")
+						f.Intrinsic.String.LPad(v.Local.iSeq,"0",6,v.Local.sSeqPad)
+						f.Intrinsic.String.Build("DELETE FROM RTR_SEQ_COMMENTS WHERE RTR_NUMBER='{0}' AND RTR_SEQ='{1}'",V.Local.sPart,V.Local.sSeqPad,v.Local.ssql)
+						F.ODBC.Connection!con.EXECUTE(v.Local.ssql)
+						f.Intrinsic.String.Build("INSERT INTO RTR_SEQ_COMMENTS VALUES ('{0}','{1}','{2}')",V.Local.sPart,V.Local.sSeqPad,V.Local.sNotes.PSQLFriendly,v.Local.ssql)
+						F.ODBC.Connection!con.EXECUTE(v.Local.ssql)
+					f.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.Elseif(v.Local.sLMO.Trim,=,"L")
+					'Labour work
+					F.Intrinsic.Control.CallSub(uploadRTR,"DBARev",v.Local.sdbarev,"Number",v.Local.sPart,"Desc",v.Local.sRtrDesc,"PL","FM","LeadTime","","Qty10","","Qty9","","Qty8","","Qty7","","Qty6","","Qty5","","Qty4","","Qty3","","Qty2","","Qty1","1","Seq_Desc",v.Local.sDesc,"UM","HR","Rate",v.Local.fCost,"RunTime",v.Local.fRunHrs,"Part","","LMO","L","Sequence",V.Local.iSeq,"WC",v.Local.sMatOutLab,"SetupTime",v.Local.fSetHrs,"Customer","","CustPart","","OpCode","")
+					f.Intrinsic.Control.If(v.Local.sNotes.Trim,<>,"")
+						f.Intrinsic.String.LPad(v.Local.iSeq,"0",6,v.Local.sSeqPad)
+						f.Intrinsic.String.Build("DELETE FROM RTR_SEQ_COMMENTS WHERE RTR_NUMBER='{0}' AND RTR_SEQ='{1}'",V.Local.sPart,V.Local.sSeqPad,v.Local.ssql)
+						F.ODBC.Connection!con.EXECUTE(v.Local.ssql)
+						f.Intrinsic.String.Build("INSERT INTO RTR_SEQ_COMMENTS VALUES ('{0}','{1}','{2}')",V.Local.sPart,V.Local.sSeqPad,V.Local.sNotes.PSQLFriendly,v.Local.ssql)
+						F.ODBC.Connection!con.EXECUTE(v.Local.ssql)
+					f.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.Elseif(v.Local.sLMO.Trim,=,"M")
+					'Material
+					F.Intrinsic.Control.CallSub(uploadRTR,"DBARev",v.Local.sdbarev,"Number",v.Local.sPart,"Desc",v.Local.sRtrDesc,"PL","FM","LeadTime",v.Local.fLead,"Qty10","","Qty9","","Qty8","","Qty7","","Qty6","","Qty5","","Qty4","","Qty3","","Qty2","","Qty1","1","Seq_Desc",v.Local.sDesc,"UM",V.Local.sUM,"Rate",v.Local.fCost,"RunTime",v.Local.fRunHrs,"Part",v.Local.sMatOutLab,"LMO","M","Sequence",V.Local.iSeq,"WC","","SetupTime",v.Local.fSetHrs,"Customer","","CustPart","","OpCode","")
+					f.Intrinsic.Control.If(v.Local.sNotes.Trim,<>,"")
+						f.Intrinsic.String.LPad(v.Local.iSeq,"0",6,v.Local.sSeqPad)
+						f.Intrinsic.String.Build("DELETE FROM RTR_SEQ_COMMENTS WHERE RTR_NUMBER='{0}' AND RTR_SEQ='{1}'",V.Local.sPart,V.Local.sSeqPad,v.Local.ssql)
+						F.ODBC.Connection!con.EXECUTE(v.Local.ssql)
+						f.Intrinsic.String.Build("INSERT INTO RTR_SEQ_COMMENTS VALUES ('{0}','{1}','{2}')",V.Local.sPart,V.Local.sSeqPad,V.Local.sNotes.PSQLFriendly,v.Local.ssql)
+						F.ODBC.Connection!con.EXECUTE(v.Local.ssql)
+					f.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.EndIf
+				'iCounter
+				f.Intrinsic.Control.If(v.Local.iCounter,>,500)
+					f.Intrinsic.File.Append2File(v.Global.sfiledir,v.Global.sfileupload)
+					v.Local.icounter.Set(0)
+					v.Global.sfileupload.Set("")
+				f.Intrinsic.Control.EndIf
+				f.Intrinsic.Math.Add(v.Local.iCounter,1,v.local.iCounter)
+			f.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Next(V.Local.iCount)
+	f.Intrinsic.Control.EndIf
+	'Append remaining records	
+	V.local.lRet.Declare(long)
+	f.Intrinsic.File.GetHandle(v.local.lRet)
+	f.Intrinsic.File.OpenForWrite(V.global.sfiledir,v.local.lRet)
+	f.Intrinsic.File.WriteLine(v.Local.lRet,v.Global.sfileupload)
+	f.Intrinsic.File.CloseFile(v.Local.lRet)
+
+	'Upload into Global Shop
+	F.Intrinsic.File.File2String(V.global.sfiledir,V.Local.sRouterHD)
+	f.Intrinsic.Control.If(v.Local.sRouterHD.Trim,<>,"")
+		F.Global.General.CallWrapperSync(50,"UPLRTRH/A/X")
+		F.Intrinsic.UI.Msgbox("Routers have been uploaded.")
+	f.Intrinsic.Control.Else
+		f.Intrinsic.UI.Msgbox("Router upload file empty, no upload done.")
+	f.Intrinsic.Control.EndIf
+	Function.Automation.MSExcel.DestroyAllObjects("MSExcel","Test","Worksheet1")
+	Function.Intrinsic.UI.CloseWaitDialog
+	f.Intrinsic.UI.CloseWaitDialog
+	f.ODBC.Connection!con.Close
+	f.Intrinsic.Control.End
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+	f.Automation.MSExcel.DestroyAllObjects("MSExcel","Test","Worksheet1")
+	f.ODBC.Connection!con.Close
+	f.Intrinsic.Control.End
+f.Intrinsic.Control.EndTry
+Program.Sub.DragDrop.End
+
+Program.Sub.frmStatus_UnLoad.Start
+f.ODBC.Connection!con.Close
+f.Intrinsic.Control.End
+Program.Sub.frmStatus_UnLoad.End
+
+Program.Sub.uploadRTR.Start
+'arguments, Number, part, RunTime,  Comment, um, lmo,workcenter, overlap
+'LMO need to be C for comment
+'LMO needs to be L for workcenter
+'LMO needs to be M for material RunTime is quantity when LMO is M
+V.Local.iCt.Declare(Long)
+V.Local.shold.Declare(String)
+V.Local.iPLine.Declare(Long)
+V.Local.iPSeq.Declare(Long)
+V.Local.sSQL.Declare(String)
+V.Local.sOp.Declare(String)
+V.Local.sDesc.Declare(String)
+V.Local.sLMO.Declare(String)
+v.local.sbuildrotr.Declare(string)
+v.Local.fRate.Declare(float)
+v.Local.fRate.Set(v.Args.Rate)
+
+'Router Number
+F.Intrinsic.String.RPad(V.Args.Number," ",20,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,20,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Header Desc
+F.Intrinsic.String.RPad(V.Args.Desc," ",30,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,30,V.Local.sHold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Sequence
+F.Intrinsic.String.Format(V.Args.Sequence,"000000",V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'LMO
+F.Intrinsic.String.RPad(V.Args.LMO," ",1,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,1,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Part
+F.Intrinsic.String.RPad(V.Args.Part," ",20,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,20,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Workcenter
+F.Intrinsic.String.RPad(V.Args.WC," ",4,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,4,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Seq Desc
+F.Intrinsic.String.RPad(V.Args.Seq_Desc," ",30,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,30,V.Local.sDesc)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Setup
+F.Intrinsic.String.LPad(v.Args.setuptime," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Runtime/Material
+F.Intrinsic.Control.If(V.Args.RunTime.Trim,<>,"")
+	F.Intrinsic.String.LPad(V.Args.RunTime," ",16,V.Local.shold)
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.LPad("00000000000.0000"," ",16,V.Local.shold)
+F.Intrinsic.Control.EndIf
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Customer
+F.Intrinsic.String.RPad(v.Args.customer," ",6,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,6,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Orig Date
+F.Intrinsic.String.Format(V.Ambient.Date,"MMDDYY",v.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Op Code
+F.Intrinsic.String.RPad(v.Args.OpCode," ",6,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,6,V.Local.sOp)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Rate
+F.Intrinsic.Control.If(v.Local.fRate,=,0)
+	V.Local.shold.Set("00000000000.0000")
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Format(v.Local.fRate,"#.0000",V.Local.shold)
+	F.Intrinsic.String.LPad(V.Local.shold,"0",16,V.Local.shold)
+F.Intrinsic.Control.EndIf
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'UM
+F.Intrinsic.String.RPad(V.Args.UM," ",2,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,2,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Desc 1-3
+F.Intrinsic.String.RPad(v.Args.DBARev," ",71,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,71,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.RPad(""," ",71,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,71,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.RPad(""," ",71,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,71,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Quantity 1-10
+F.Intrinsic.String.LPad(V.Args.Qty1,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.LPad(V.Args.Qty2,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.LPad(V.Args.Qty3,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.LPad(V.Args.Qty4,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Purge
+F.Intrinsic.String.LPad(""," ",1,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,1,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Frequency
+F.Intrinsic.String.LPad(""," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Machine
+F.Intrinsic.String.LPad("0.00","0",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Overlap
+F.Intrinsic.String.LPad(""," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'WC Factor
+f.Intrinsic.String.Concat(v.local.sbuildrotr,"                ",v.local.sbuildrotr)
+
+'Min Flag
+f.Intrinsic.String.Concat(v.local.sbuildrotr,"N",v.local.sbuildrotr)
+
+'Min Outside
+F.Intrinsic.String.LPad("0.0000"," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Crew Size
+F.Intrinsic.String.LPad("0.0000"," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Lead Time
+F.Intrinsic.String.LPad(V.Args.LeadTime," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Part Loc
+F.Intrinsic.String.RPad(""," ",2,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,2,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Tooling Switch
+F.Intrinsic.String.RPad(""," ",1,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,1,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Sort Code
+F.Intrinsic.String.RPad(""," ",20,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,20,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Drawing No
+F.Intrinsic.String.RPad(""," ",30,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,30,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'PAD
+F.Intrinsic.String.RPad(" "," ",250,V.Local.shold)
+F.Intrinsic.String.Concat(v.local.sbuildrotr,V.Local.shold,v.local.sbuildrotr)
+
+'Scrap
+F.Intrinsic.String.LPad("0.000"," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Cust Part
+F.Intrinsic.String.RPad(v.Args.custpart," ",20,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,20,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Sort 1
+F.Intrinsic.String.RPad(""," ",20,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,20,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Sort 2
+F.Intrinsic.String.RPad(""," ",20,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,20,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Commission
+F.Intrinsic.String.LPad("0.00"," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Quantities
+F.Intrinsic.String.LPad(V.Args.Qty5,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.LPad(V.Args.Qty6,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.LPad(V.Args.Qty7,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.LPad(V.Args.Qty8,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.LPad(V.Args.Qty9,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+F.Intrinsic.String.LPad(V.Args.Qty10,"0",16,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Signoff User
+F.Intrinsic.String.RPad(""," ",8,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,8,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Signoff Type
+F.Intrinsic.String.RPad(""," ",1,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,1,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+'Prod Line
+F.Intrinsic.String.lpad(V.Args.PL," ",2,V.Local.shold)
+f.Intrinsic.String.Concat(v.local.sbuildrotr,v.Local.shold,v.local.sbuildrotr)
+
+F.Intrinsic.String.Concat(v.local.sbuildrotr,v.Ambient.NewLine,v.local.sbuildrotr)
+
+f.Intrinsic.String.Build("{0}{1}",v.global.sfileupload,v.local.sbuildrotr,v.Global.sfileupload)
+
+Program.Sub.uploadRTR.End

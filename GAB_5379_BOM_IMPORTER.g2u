@@ -1,0 +1,399 @@
+Program.Sub.ScreenSU.Start
+Gui.frmQuoteCreate..Create
+Gui.frmQuoteCreate..Caption("BOM Importer")
+Gui.frmQuoteCreate..Size(7365,4050)
+Gui.frmQuoteCreate..MinX(0)
+Gui.frmQuoteCreate..MinY(0)
+Gui.frmQuoteCreate..Position(0,0)
+Gui.frmQuoteCreate..BackColor(-2147483633)
+Gui.frmQuoteCreate..MousePointer(0)
+Gui.frmQuoteCreate..Event(UnLoad,frmQuoteCreate_UnLoad)
+Gui.frmQuoteCreate.trvDrag.Create(TreeView)
+Gui.frmQuoteCreate.trvDrag.Size(6735,2910)
+Gui.frmQuoteCreate.trvDrag.Position(195,375)
+Gui.frmQuoteCreate.lbl1.Create(Label,"Drag and Drop CSV File Here",True,6495,255,0,180,150,True,0,"Arial",8,-2147483633,0)
+Gui.frmQuoteCreate.lbl1.FontStyle(True,False,False,False,False)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+v.Global.sBuildBOMs.Declare(string)
+v.global.sfileupload.Declare(string)
+v.global.sfiledir.Declare(string)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+f.ODBC.Connection!con.openconnection(v.Ambient.PDSN,v.Ambient.PUser,v.Ambient.PPass)
+Gui.frmQuoteCreate.trvDrag.Event("DRAGDROPFILE",Dragdrop)
+GUI.frmQuoteCreate..Show
+
+Program.Sub.Main.End
+
+Program.Sub.DragDrop.Start
+gui.frmQuoteCreate..Visible(False)
+
+v.Local.sfiles.Declare(string)
+v.Local.scontent.Declare(string)
+v.Local.sBomParent.Declare(string)
+v.Local.sBomParentRev.Declare(string)
+v.Local.sBom.Declare(string)
+v.Local.sRev.Declare(string)
+v.Local.sDescription.Declare(string)
+v.Local.sUM.Declare(string)
+v.Local.sGSSBOMPart.Declare(string)
+v.Local.sfilename.Declare(string)
+v.Local.slevel.Declare(string)
+v.Local.sComponentID.Declare(string)
+V.Local.ssql.Declare(string)
+v.Local.sSearch.Declare(string)
+v.Local.sret.Declare(string)
+v.Local.iBomcounter.Declare(long)
+
+v.Local.fQTY.Declare(float)
+
+v.Local.lLevel.Declare(long)
+v.Local.i.Declare(long)
+v.Local.j.Declare(long)
+v.Local.k.Declare(long)
+v.Local.h.Declare(long)
+v.Local.x.Declare(long)
+v.Local.sString.Declare(string)
+
+v.Local.sBomParentIndex.Declare(string)
+v.Local.sBomParentIndex.Redim(0,7)
+v.Local.sGSSPart.Declare(string)
+v.Local.sGSSRev.Declare(string)
+v.Local.spart.Declare(string)
+v.Local.sRetVar.Declare(string)
+v.Local.oldJ.Declare(long)
+v.Local.tempJ.Declare(long)
+'Blank BOM Header
+V.Local.sfilename.Set("BOMHDR.TXT")
+v.Local.sFileUploadString.Declare(string)
+v.Local.sretVarheader.Declare(string)
+v.Local.stype.Declare(string)
+v.Local.sBuild.Declare(string)
+v.Local.sLastLevel.Declare(string)
+v.Local.sSource.Declare(string)
+v.Local.srtrseq.Declare(string)
+v.Local.iCounter.Declare(long)
+v.Local.iCount.Declare(long)
+v.Local.lRowCount.Declare(long)
+v.Local.lLastLevel.Declare(long)
+v.Local.ltemplevel.Declare(long)
+F.Intrinsic.String.Concat(V.Caller.FilesDir,"\",V.Local.sfilename,V.global.sfiledir)
+F.Intrinsic.File.String2File(V.Global.sfiledir,"")
+
+f.Automation.MSExcel.CreateAppObject("MSExcel")
+f.Automation.MSExcel.OpenWorkBook("MSExcel","Test",v.Args.files)
+f.Automation.MSExcel.OpenWorkSheet("Test","Worksheet1",1)
+f.Automation.MSExcel.RowCount("Worksheet1",v.Local.lRowCount)
+f.Automation.MSExcel.ReadCell("Worksheet1",1,1,V.local.sretVarheader)
+F.Intrinsic.Control.If(V.Local.sRetVarheader,<>,"")
+	F.Intrinsic.Control.For(V.Local.iCount,2,v.local.lRowCount,1)
+		'Read Row
+		f.Automation.MSExcel.ReadRow("Worksheet1",V.Local.iCount,1,12,V.local.sRetVar)
+		F.Intrinsic.String.Split(V.Local.sRetVar,"*!*",V.Local.sRetVar)
+		f.Global.Inventory.GetGSSPart(v.Local.sretVar(1),"",v.Local.spart)
+		f.Intrinsic.String.Concat(v.Local.sString,v.Local.sretvar(0),"*!*",v.Local.spart,"*!*",v.Local.sretvar(2),"*!*",v.Local.sretvar(3),"*!*",v.Local.sretvar(4),"*!*",v.Local.sretvar(5),v.Ambient.NewLine,v.Local.sString)
+	f.Intrinsic.Control.Next(v.Local.iCount)
+f.Intrinsic.Control.EndIf
+F.Automation.MSExcel.DestroyAllObjects("MSExcel","Test","Worksheet1")
+f.Data.DataTable.CreateFromString("dt",v.Local.sString,"Level*!*ComponentID*!*Description*!*TotalQTY*!*UM*!*Type*!*FixedQTY*!*BOMMNO*!*GSSPart*!*GSSRev","String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String","*!*",v.Ambient.NewLine)
+f.Data.DataTable.DeleteRow("dt",v.DataTable.dt.RowCount--)
+
+f.Data.DataTable.Create("dtTemp",true)
+f.Data.DataTable.AddColumn("dtTemp","Level","string")
+f.Data.DataTable.AddColumn("dtTemp","ActualParent","String")
+f.Data.DataTable.AddColumn("dtTemp","ActualComp","string")
+f.Data.DataTable.AddColumn("dtTemp","GSSParent","string")
+f.Data.DataTable.AddColumn("dtTemp","ComponentID","string")
+f.Data.DataTable.AddColumn("dtTemp","Description","string")
+f.Data.DataTable.AddColumn("dtTemp","TotalQTY","float")
+f.Data.DataTable.AddColumn("dtTemp","UM","string")
+f.Data.DataTable.AddColumn("dtTemp","GSSPart","string")
+f.Data.DataTable.AddColumn("dtTemp","GSSRev","string")
+f.Data.DataTable.AddColumn("dtTemp","Type","string")
+f.Data.DataTable.AddColumn("dtTemp","Seq","string")
+f.Data.DataTable.AddColumn("dtTemp","Source","string")
+
+f.Data.DataTable.Create("dtMast",true)
+f.Data.DataTable.AddColumn("dtMast","Level","string")
+f.Data.DataTable.AddColumn("dtMast","ComponentID","string")
+f.Data.DataTable.AddColumn("dtMast","Description","string")
+f.Data.DataTable.AddColumn("dtMast","TotalQTY","float")
+f.Data.DataTable.AddColumn("dtMast","UM","string")
+f.Data.DataTable.AddColumn("dtMast","GSSPart","string")
+f.Data.DataTable.AddColumn("dtMast","GSSRev","string")
+f.Data.DataTable.AddColumn("dtMast","GSSParent","string")
+f.Data.DataTable.AddColumn("dtMast","Type","string")
+
+f.Intrinsic.Control.For(v.Local.j,0,v.datatable.dt.rowcount--,1)	
+	'Set variables
+	v.Local.lLevel.Set(v.DataTable.dt(v.Local.j).Level!FieldValTrim)
+	V.Local.sComponentID.Set(v.DataTable.dt(v.Local.j).ComponentID!Fieldvaltrim)	
+	f.Global.Inventory.GetGSSPart(v.Local.sComponentID,"",v.Local.sComponentID)
+	v.Local.sDescription.Set(v.DataTable.dt(v.local.j).Description!Fieldvaltrim)
+	v.Local.fQTY.Set(v.DataTable.dt(v.Local.j).TotalQty!FieldvalFloat)
+	v.Local.sUM.Set(v.DataTable.dt(v.Local.j).UM!Fieldvaltrim)
+	v.Local.sGSSPart.Set(v.DataTable.dt(v.Local.j).GSSPart!Fieldvaltrim)
+	v.Local.sGSSRev.Set(v.DataTable.dt(v.Local.j).GSSRev!Fieldvaltrim)	
+	v.Local.stype.Set(v.DataTable.dt(v.Local.j).Type!Fieldvaltrim)
+	'GET THE SOURCE
+	f.Intrinsic.String.Build("SELECT CODE_SOURCE FROM V_INVENTORY_ALL WHERE PART='{0}'",v.local.sComponentID,v.Local.ssql)
+	f.ODBC.Connection!con.executeandreturn(v.Local.ssql,v.Local.sSource)
+	f.Intrinsic.Control.If(v.Local.sSource.Trim,=,"")
+		v.Local.sSource.Set("F")
+	F.Intrinsic.Control.EndIf
+			
+	f.Intrinsic.Control.If(v.Local.lLevel,=,"0")
+		f.Intrinsic.String.Build("SELECT * FROM V_BOM_MSTR WHERE PARENT='{0}'",v.Local.sComponentID,v.Local.ssql)
+		f.odbc.Connection!con.executeandreturn(v.Local.ssql,v.Local.sret)
+		f.Intrinsic.Control.If(v.Local.sret.Trim,<>,"")
+			f.Intrinsic.UI.Msgbox("BOM found in system, please delete out before reuploading.  Program will now exit.")
+			f.Intrinsic.Control.CallSub(frmQuoteCreate_UnLoad)
+		f.Intrinsic.Control.EndIf
+		f.Data.DataTable.AddRow("dtTemp","Source",v.Local.sSource,"Type",v.Local.stype,"Level",V.Local.lLevel,"ComponentID",v.Local.sComponentID,"Description",v.Local.sDescription,"TotalQTY",v.Local.fQTY,"UM",v.Local.sUM,"GSSPart","","GSSRev","","GSSParent",v.Local.sComponentID,"Seq","0000")
+	f.Intrinsic.Control.Else	
+		f.Intrinsic.Control.If(v.Local.lLevel,<>,v.Local.lLastLevel)
+			'Get Parent
+			f.Intrinsic.Control.If(v.Local.lLevel,>,v.Local.lLastLevel)
+				f.Intrinsic.Math.Sub(v.Local.j,1,v.Local.k)
+				v.Local.sBomParent.Set(v.DataTable.dt(v.Local.k).COMPONENTID!FIELDVALTRIM)
+				f.Intrinsic.Math.Add(v.Local.lLevel,1,v.Local.tempJ)
+				'This is a new BOM Needs a BOM record with 0000
+				'See if next level has a component, if so, then it is a BOM
+				f.Intrinsic.Math.Add(v.Local.j,1,v.Local.tempJ)
+				'Check to make sure it doesn't exceed boundary
+				f.Intrinsic.Control.If(v.Local.tempj,<=,v.DataTable.dt.RowCount--)
+					f.Intrinsic.Control.If(v.DataTable.dt(v.Local.tempj).Level!Fieldval,>,v.Local.lLevel)
+						'Next level is higher than current level, this is a parent, Needs a BOM record with 0000
+						f.Data.DataTable.AddRow("dtTemp","Source",v.Local.sSource,"Type",v.Local.stype,"Level",V.Local.lLevel,"ComponentID",v.Local.sComponentID,"Description",v.Local.sDescription,"TotalQTY",v.Local.fQTY,"UM",v.Local.sUM,"GSSPart","","GSSRev","","GSSParent",v.Local.sComponentID,"Seq","0000")
+					f.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.EndIf
+				f.Data.DataTable.AddRow("dtTemp","Source",v.Local.sSource,"Type",v.Local.stype,"Level",V.Local.lLevel,"ComponentID",v.Local.sComponentID,"Description",v.Local.sDescription,"TotalQTY",v.Local.fQTY,"UM",v.Local.sUM,"GSSPart","","GSSRev","","GSSParent",v.Local.sBomParent,"Seq",v.Local.j)
+			f.Intrinsic.Control.Else
+				'It is less than, need to find its parent, but how?
+				f.Intrinsic.Math.Sub(v.Local.lLevel,1,v.local.ltemplevel)
+				v.Local.sBomParent.Set(v.Local.sBomParentIndex(v.Local.ltemplevel))
+				f.Data.DataTable.AddRow("dtTemp","Source",v.Local.sSource,"Type",v.Local.stype,"Level",V.Local.lLevel,"ComponentID",v.Local.sComponentID,"Description",v.Local.sDescription,"TotalQTY",v.Local.fQTY,"UM",v.Local.sUM,"GSSPart","","GSSRev","","GSSParent",v.Local.sBomParent,"Seq",v.Local.j)
+				'Is the next level different?
+				f.Intrinsic.Math.Add(v.Local.j,1,v.Local.tempJ)
+				f.Intrinsic.Control.If(v.DataTable.dt(v.Local.tempj).Level!Fieldval,>,v.Local.lLevel)
+					'Next level is higher than current level, this is a parent, Needs a BOM record with 0000
+					f.Data.DataTable.AddRow("dtTemp","Source",v.Local.sSource,"Type",v.Local.stype,"Level",V.Local.lLevel,"ComponentID",v.Local.sComponentID,"Description",v.Local.sDescription,"TotalQTY",v.Local.fQTY,"UM",v.Local.sUM,"GSSPart","","GSSRev","","GSSParent",v.Local.sComponentID,"Seq","0000")
+				f.Intrinsic.Control.EndIf
+			f.Intrinsic.Control.EndIf
+		f.Intrinsic.Control.Else
+			'Needs a Normal incremental record
+			f.Data.DataTable.AddRow("dtTemp","Source",v.Local.sSource,"Type",v.Local.stype,"Level",V.Local.lLevel,"ComponentID",v.Local.sComponentID,"Description",v.Local.sDescription,"TotalQTY",v.Local.fQTY,"UM",v.Local.sUM,"GSSPart","","GSSRev","","GSSParent",v.Local.sBomParent,"Seq",v.Local.j)
+			'Is the next level different?
+			f.Intrinsic.Math.Add(v.Local.j,1,v.Local.tempJ)
+			'Check to make sure it doesn't exceed boundary
+			f.Intrinsic.Control.If(v.Local.tempj,<=,v.DataTable.dt.RowCount--)
+				f.Intrinsic.Control.If(v.DataTable.dt(v.Local.tempj).Level!Fieldval,>,v.Local.lLevel)
+					'Next level is higher than current level, this is a parent, Needs a BOM record with 0000
+					f.Data.DataTable.AddRow("dtTemp","Source",v.Local.sSource,"Type",v.Local.stype,"Level",V.Local.lLevel,"ComponentID",v.Local.sComponentID,"Description",v.Local.sDescription,"TotalQTY",v.Local.fQTY,"UM",v.Local.sUM,"GSSPart","","GSSRev","","GSSParent",v.Local.sComponentID,"Seq","0000")
+				f.Intrinsic.Control.EndIf
+			f.Intrinsic.Control.EndIf
+		f.Intrinsic.Control.EndIf
+	f.Intrinsic.Control.EndIf
+	v.Local.lLastLevel.Set(v.Local.lLevel)
+	v.Local.sBomParentIndex(v.Local.llevel).Set(v.Local.sComponentID)
+f.Intrinsic.Control.Next(v.Local.j)
+
+'If Phantom, then reach into router and add to the BOM.
+V.Local.j.Set(0)
+F.Intrinsic.Control.For(v.Local.j,0,v.DataTable.dtTemp.RowCount--,1)
+	f.Intrinsic.Control.If(v.DataTable.dtTemp(v.Local.j).Type!fieldvaltrim,=,"Phantom")
+		v.Local.lLevel.Set(v.DataTable.dtTemp(v.Local.j).Level!FieldValTrim)
+		V.Local.sComponentID.Set(v.DataTable.dtTemp(v.Local.j).ComponentID!Fieldvaltrim)	
+		f.Global.Inventory.GetGSSPart(v.Local.sComponentID,"",v.Local.sComponentID)
+		v.Local.sDescription.Set(v.DataTable.dtTemp(v.local.j).Description!Fieldvaltrim)
+		v.Local.fQTY.Set(v.DataTable.dtTemp(v.Local.j).TotalQty!FieldvalFloat)
+		v.Local.sUM.Set(v.DataTable.dtTemp(v.Local.j).UM!Fieldvaltrim)
+		v.Local.stype.Set(v.DataTable.dtTemp(v.Local.j).Type!Fieldvaltrim)
+		
+		'Reach into router and find its materials
+		f.Intrinsic.Control.If(v.DataTable.dtMat.Exists)
+			f.Data.DataTable.Close("dtMat")
+		f.Intrinsic.Control.EndIf
+		f.Intrinsic.String.Build("SELECT * FROM V_ROUTER_LINE WHERE ROUTER='{0}' AND LMO='M'",v.DataTable.dtTemp(v.Local.j).ComponentId!fieldvaltrim,v.Local.ssql)
+		f.Data.DataTable.CreateFromSQL("dtMat","con",v.Local.ssql,true)
+		f.Intrinsic.Control.For(v.Local.x,0,v.DataTable.dtMat.RowCount--,1)
+			'GET THE SOURCE
+			v.Local.srtrseq.Set(v.DataTable.dtMat(v.Local.x).line_router!fieldvaltrim)
+			f.Intrinsic.String.Build("SELECT CODE_SOURCE FROM V_INVENTORY_ALL WHERE PART='{0}'",v.DataTable.dtMat(v.Local.x).PART_WC_OUTSIDE!Fieldval,v.Local.ssql)
+			f.ODBC.Connection!con.executeandreturn(v.Local.ssql,v.Local.sSource)
+			f.Intrinsic.Control.If(v.Local.sSource.Trim,=,"")
+				v.Local.sSource.Set("J")
+			F.Intrinsic.Control.EndIf
+			f.Intrinsic.Math.Add(v.Local.lLevel,1,v.Local.ltemplevel)
+			f.Data.DataTable.AddRow("dtTemp","Type","Normal","Source",v.Local.sSource,"Level",V.Local.ltemplevel,"ComponentID",v.DataTable.dtMat(v.Local.x).PART_WC_OUTSIDE!Fieldval,"Description",v.DataTable.dtMat(v.Local.x).DESC_RT_LINE!Fieldval,"TotalQTY",v.DataTable.dtMat(v.Local.x).RUN_TIME!Fieldval,"UM",v.DataTable.dtMat(v.Local.x).UM_INVENTORY!Fieldval,"GSSPart","","GSSRev","","GSSParent",v.Local.sComponentID,"Seq",v.Local.x)	
+		f.Intrinsic.Control.Next(v.Local.x)
+	f.Intrinsic.Control.EndIf
+f.Intrinsic.Control.Next(V.LOcal.j)
+
+'Temp table does the formatting of the bom
+F.Intrinsic.Control.For(v.Local.i,0,v.DataTable.dtTemp.RowCount--,1)
+	'Check to see if it exists in the master table
+	f.Intrinsic.String.Build("GSSParent='{0}' AND GSSPART='{1}' AND GSSREV='{2}'",v.DataTable.dtTemp(v.Local.i).GSSParent!fieldvaltrim,v.DataTable.dtTemp(v.Local.i).GSSPart!fieldvaltrim,v.DataTable.dtTemp(v.Local.i).GSSRev!fieldvaltrim,v.Local.sSearch)
+	f.Data.DataTable.Select("dtMast",v.Local.sSearch,v.local.sret)
+	F.Intrinsic.Control.If(V.Local.sret.Trim,=,"***NORETURN***")
+		f.Intrinsic.Control.CallSub(uploadBOM,"Part",v.DataTable.dtTemp(v.Local.i).ComponentID!fieldvaltrim,"Rev","","Qty",v.DataTable.dtTemp(v.Local.i).TotalQty!fieldvaltrim,"UM",v.DataTable.dtTemp(v.Local.i).UM!fieldvaltrim,"Desc",v.DataTable.dtTemp(v.Local.i).Description!fieldvaltrim,"Vendor","","Category",v.DataTable.dtTemp(v.Local.i).Type!fieldvaltrim,"Source",v.DataTable.dtTemp(v.Local.i).Source!fieldvaltrim,"Parent",v.DataTable.dtTemp(v.Local.i).GSSParent!fieldvaltrim,"iCount",v.Local.iBOMCounter,"Seq",v.DataTable.dtTemp(v.Local.i).Seq!fieldvaltrim)
+		f.Intrinsic.Math.Add(v.Local.iBOMCounter,1,v.Local.iBOMCounter)
+	F.Intrinsic.Control.EndIf
+f.Intrinsic.Control.Next(v.Local.i)
+	
+'Append remaining records
+
+'Bring string into File
+F.Intrinsic.String.Concat(V.Caller.FilesDir,"\",V.Local.sfilename,V.global.sfiledir)
+V.local.lRet.Declare(long)
+f.Intrinsic.File.GetHandle(v.local.lRet)
+f.Intrinsic.File.OpenForWrite(V.global.sfiledir,v.local.lRet)
+f.Intrinsic.File.WriteLine(v.Local.lRet,v.Global.sfileupload)
+f.Intrinsic.File.CloseFile(v.Local.lRet)
+
+'Delete if exists
+f.Data.DataTable.Create("dtDelete",true)
+f.Data.DataTable.AddColumn("dtDelete","Part","String")
+f.Global.Inventory.GetGSSPart(v.DataTable.dtTemp(0).ComponentID!FieldvalTrim,"",v.Local.sComponentID)
+f.Intrinsic.Control.CallSub(loadbom,"sPart",V.Local.sComponentID)
+
+v.Local.j.Set(0)
+f.Intrinsic.Control.For(v.Local.j,0,v.datatable.dtDelete.rowcount--,1)
+	f.Intrinsic.String.Build("Delete from BOM_Eng where part IN ('{0}')",v.DataTable.dtDelete(v.Local.j).PART!FIELDVALTRIM,V.Local.ssql)
+	f.ODBC.Connection!con.Execute(V.Local.ssql)
+	f.Intrinsic.String.Build("Delete from bom_mstr where parent IN ('{0}')",v.DataTable.dtDelete(v.Local.j).PART!FIELDVALTRIM,V.Local.ssql)
+	F.ODBC.Connection!con.execute(V.Local.ssql)
+f.Intrinsic.Control.Next(v.Local.j)
+
+f.Intrinsic.String.Build("Delete from BOM_Eng where part IN ('{0}')",v.Local.sComponentID,V.Local.ssql)
+f.ODBC.Connection!con.Execute(V.Local.ssql)
+f.Intrinsic.String.Build("Delete from bom_mstr where parent IN ('{0}')",v.Local.sComponentID,V.Local.ssql)
+F.ODBC.Connection!con.execute(V.Local.ssql)
+	
+'Upload
+F.Global.General.CallWrapperSync(6010,"NS!*!50")
+F.Global.General.CallWrapperAsync(1000,V.Caller.CompanyCode)
+
+f.Intrinsic.UI.CloseWaitDialog
+f.Intrinsic.Control.End
+		
+Program.Sub.DragDrop.End
+
+
+Program.Sub.LoadBOM.Start
+V.Local.sSQL.Declare(String,"select PART from BOM_MSTR where PART<>'' and PARENT='{0}' and PARENT<>PART")
+f.Intrinsic.String.Build(V.Local.sSQL,V.Args.sPart,V.Local.sSQL)
+F.ODBC.Connection!Con.OpenLocalRecordsetRO("RS",V.Local.sSQL)
+f.Intrinsic.Control.DoUntil(V.ODBC.Con!RS.EOF,=,True)
+	f.Data.DataTable.AddRow("dtDelete","Part",v.ODBC.con!RS.FIELDVALTRIM!PART)
+	f.Intrinsic.Control.CallSub(loadbom,"sPart",V.ODBC.Con!RS.FieldVal!PART)
+	F.ODBC.Con!RS.MoveNext
+f.Intrinsic.Control.Loop
+F.ODBC.Con!RS.Close
+Program.Sub.LoadBOM.End
+
+Program.Sub.frmQuoteCreate_UnLoad.Start
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+Program.Sub.frmQuoteCreate_UnLoad.End
+
+Program.Sub.uploadBOM.Start
+v.Local.sError.Declare(String)
+V.Local.sLine.Declare(String)
+V.Local.sParent.Declare(String)
+V.Local.sPart.Declare(String)
+V.Local.sSeq.Declare(String)
+V.Local.sDescription.Declare(String)
+V.Local.sCount.Declare(String)
+V.Local.sUM.Declare(String)
+V.Local.sCategory.Declare(String)
+V.Local.sSource.Declare(String)
+V.Local.sMisc.Declare(String)
+V.Local.iFor.Declare(Long)
+V.Local.i7.Declare(Long)
+V.Local.sRev.Declare(String)
+V.Local.schild.Declare(String)
+V.Local.sqty.Declare(String)
+V.Local.spno.Declare(String)
+V.Local.suom.Declare(String)
+V.Local.sDesc.Declare(String)
+V.Local.spad.Declare(String)
+V.Local.spad1.Declare(String)
+V.Local.spad2.Declare(String)
+V.Local.spad3.Declare(String)
+V.Local.sRMLine.Declare(String)
+V.Local.sRMParent.Declare(String)
+v.Local.ssql.Declare(String)
+V.Local.sVendcode.Declare(String)
+v.Local.sPL.Declare(string)
+V.Local.sTempCategory.Declare(String)
+
+F.Intrinsic.String.RPad(v.Args.Part," ",17,V.Local.sPart)
+F.Intrinsic.String.Left(V.Local.sPart,17,V.Local.sPart)
+
+F.Intrinsic.String.RPad(v.Args.Rev," ",3,V.Local.sRev)
+F.Intrinsic.String.Left(V.Local.sRev,3,V.Local.sRev)
+
+'Parent
+F.Intrinsic.String.RPad(V.Args.Parent," ",20,V.Local.sParent)
+F.Intrinsic.String.Concat(v.global.sfileupload,v.Local.sParent,v.global.sfileupload)
+
+'Sequences
+f.Intrinsic.String.LPad(v.args.Seq,"0",4,v.Local.sLine)
+F.Intrinsic.String.Concat(v.global.sfileupload,v.Local.sLine,v.global.sfileupload)
+
+'Quantity
+Function.Intrinsic.String.Format(v.Args.QTY,"####.0000", variable.local.sqty)
+F.Intrinsic.String.LPad(variable.local.sqty,"0",16,V.Local.sqty)
+F.Intrinsic.String.Concat(v.global.sfileupload,V.Local.sqty,v.global.sfileupload)
+
+'Part & Rev put together
+F.Intrinsic.String.GSSPartString(V.Local.sPart,V.Local.sRev,V.Local.sPart)
+f.Intrinsic.String.RPad(v.Local.sPart," ",20,v.Local.sPart)
+F.Intrinsic.String.Concat(v.global.sfileupload,V.Local.sPart,v.global.sfileupload)
+
+'UM
+F.Intrinsic.String.RPad(v.Args.UM," ",2,V.Local.sUM)
+F.Intrinsic.String.Left(V.Local.sUM,2,V.Local.sUM)
+F.Intrinsic.String.Concat(v.global.sfileupload,V.Local.sUM,v.global.sfileupload)
+
+'Descriptions
+F.Intrinsic.String.RPad(V.Args.DESC," ",30,V.Local.sdesc)
+'F.Intrinsic.String.RPad(" "," ",30,V.Local.sdesc)
+F.Intrinsic.String.Left(V.Local.sdesc,30,V.Local.sdesc)
+F.Intrinsic.String.Concat(v.global.sfileupload,V.Local.sdesc,v.global.sfileupload)
+
+'Free Pad
+F.Intrinsic.String.RPad(V.Local.spad1," ",113,V.Local.spad1)
+F.Intrinsic.String.Concat(v.global.sfileupload,V.Local.spad1,v.global.sfileupload)
+
+''Vendor Code
+'F.Intrinsic.String.RPad(v.Args.Vendor," ",6,V.Local.sVendcode)
+'F.Intrinsic.String.Left(V.Local.sVendcode,6,V.Local.sVendcode)
+'F.Intrinsic.String.Concat(v.global.sfileupload,V.Local.svendcode,v.global.sfileupload)
+
+'Free Pad
+'F.Intrinsic.String.RPad(V.Local.spad2," ",48,V.Local.spad2)
+'F.Intrinsic.String.Concat(v.global.sfileupload,V.Local.spad2,v.global.sfileupload)
+
+'Category
+F.Intrinsic.Control.If(V.Args.Category.Trim,=,"Phantom")
+	F.Intrinsic.String.Concat(v.global.sfileupload,"P",v.global.sfileupload)
+f.Intrinsic.Control.Else
+	F.Intrinsic.String.Concat(v.global.sfileupload," ",v.global.sfileupload)
+F.Intrinsic.Control.EndIf
+
+'Source
+F.Intrinsic.String.Concat(v.global.sfileupload,V.args.Source,v.global.sfileupload)
+
+'Free Pad
+F.Intrinsic.String.RPad(V.Local.spad3," ",90,V.Local.spad3)
+F.Intrinsic.String.Concat(v.global.sfileupload,V.Local.spad3,v.global.sfileupload)
+
+f.Intrinsic.String.Concat(v.Global.sfileupload,v.Ambient.NewLine,v.Global.sfileupload)
+
+
+Program.Sub.uploadBOM.End
